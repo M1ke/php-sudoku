@@ -74,6 +74,8 @@ class Solver {
 		$this->checkRows($grid);
 
 		$this->checkColumns($grid);
+
+		$this->checkBlocks($grid);
 	}
 
 	/**
@@ -116,6 +118,38 @@ class Solver {
 				}
 			}
 		}
+
+		foreach ($columns as $col_num => $column){
+			$numbers_appeared = [];
+
+			foreach ($column as $num){
+				if ((int)$num===0){
+					continue;
+				}
+				if (in_array($num, $numbers_appeared)){
+					$col_num++;
+					throw new SudokuException("The number $num appeared twice in column $col_num");
+				}
+
+				$numbers_appeared[] = $num;
+			}
+		}
+	}
+
+	private function checkBlocks(array $grid){
+		$blocks = [[], [], [], [], [], [], [], [], [],];
+		foreach ($grid as $row_num => $row){
+			$row_blocks = $row;
+			$block_base = (int) floor($row_num/3);
+			echo "Base $block_base\n";
+			foreach ($row_blocks as $n => $block){
+				$block_num = $block_base + $n;
+				echo "Num $block_num\n";
+				$blocks[$block_num] = array_merge($blocks[$block_num], $block);
+			}
+		}
+
+		print_r($blocks);
 
 		foreach ($columns as $col_num => $column){
 			$numbers_appeared = [];
