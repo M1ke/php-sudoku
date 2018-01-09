@@ -84,11 +84,12 @@ class Solver {
 
 	/**
 	 * @param array $grid
-	 * @throws SudokuException
+	 * @throws EmptyGridException
+	 * @throws InvalidGridException
 	 */
 	private function checkGridInternal(array $grid){
 		if (empty($this->grid)){
-			throw new SudokuException("The grid was empty. Set one using setGrid or submit a file to the constructor");
+			throw new EmptyGridException("The grid was empty. Set one using setGrid or submit a file to the constructor");
 		}
 
 		$this->checkRows($grid);
@@ -106,7 +107,7 @@ class Solver {
 
 	/**
 	 * @param array $grid
-	 * @throws SudokuException
+	 * @throws InvalidGridException
 	 */
 	private function checkRows(array $grid){
 		$rows = [];
@@ -125,7 +126,7 @@ class Solver {
 
 	/**
 	 * @param array $grid
-	 * @throws SudokuException
+	 * @throws InvalidGridException
 	 */
 	private function checkColumns(array $grid){
 		$columns = [];
@@ -143,6 +144,10 @@ class Solver {
 		$this->checkRange($columns, 'column');
 	}
 
+	/**
+	 * @param array $grid
+	 * @throws InvalidGridException
+	 */
 	private function checkBlocks(array $grid){
 		$blocks = [[], [], [], [], [], [], [], [], [],];
 		foreach ($grid as $row_num => $row){
@@ -160,7 +165,7 @@ class Solver {
 	/**
 	 * @param array $ranges
 	 * @param string $range_name
-	 * @throws SudokuException
+	 * @throws InvalidGridException
 	 */
 	private function checkRange(array $ranges, $range_name){
 		foreach ($ranges as $range_num => $range){
@@ -172,7 +177,7 @@ class Solver {
 				}
 				if (in_array($num, $numbers_appeared)){
 					$range_num++;
-					throw new SudokuException("The number $num appeared twice in $range_name $range_num");
+					throw new InvalidGridException("The number $num appeared twice in $range_name $range_num");
 				}
 
 				$numbers_appeared[] = $num;
@@ -180,6 +185,9 @@ class Solver {
 		}
 	}
 
+	/**
+	 * @throws SudokuException
+	 */
 	public function solveGrid(){
 		try {
 			$this->checkGrid();
@@ -196,19 +204,30 @@ class Solver {
 
 		$start_time = microtime(true);
 
-		$solved_grid = $this->backtrack($grid);
+		try {
+			$solved_grid = $this->backtrack($grid);
+		}
+		catch (SudokuException $e){
+			throw new SudokuException("A problem occurred when backtracking; this might mean the backtracker is wrong or the grid is not possible to solve. The error reported was: {$e->getMessage()}");
+		}
 
 		$this->time_taken = microtime(true) - $start_time;
 
 		$this->grid = $solved_grid;
 	}
 
+	/**
+	 * @param array $grid
+	 * @param int $depth
+	 * @return array
+	 * @throws RangeExhaustedException
+	 */
 	private function backtrack(array $grid, $depth = 1){
 		for ($fill_val = 1; $fill_val<=9; $fill_val++){
 			try {
 				$filled_grid = $this->fillFirstAvailableSquare($grid, $fill_val);
 			}
-			catch (SudokuException $e){
+			catch (GridFullException $e){
 				return $grid;
 			}
 			$this->iterations++;
@@ -216,20 +235,20 @@ class Solver {
 			try {
 				$this->checkGridInternal($filled_grid);
 			}
-			catch (SudokuException $e) {
+			catch (InvalidGridException $e) {
 				continue;
 			}
 
 			try {
 				$next_grid = $this->backtrack($filled_grid, ($depth+1));
 			}
-			catch (SudokuException $e) {
+			catch (RangeExhaustedException $e) {
 				continue;
 			}
 		}
 
 		if (empty($next_grid)){
-			throw new SudokuException("Range exhausted");
+			throw new RangeExhaustedException;
 		}
 
 		return $next_grid;
@@ -243,7 +262,7 @@ class Solver {
 		try {
 			$this->fillFirstAvailableSquare($grid, 1);
 		}
-		catch (SudokuException $e) {
+		catch (GridFullException $e) {
 			return true;
 		}
 
@@ -268,7 +287,7 @@ class Solver {
 	 * @param array $grid
 	 * @param int $val
 	 * @return array
-	 * @throws SudokuException
+	 * @throws GridFullException
 	 */
 	private function fillFirstAvailableSquare(array $grid, $val){
 		foreach ($grid as $row_key => &$blocks){
@@ -283,7 +302,7 @@ class Solver {
 			}
 		}
 
-		throw new SudokuException("Grid is full");
+		throw new GridFullException;
 	}
 
 	/**
