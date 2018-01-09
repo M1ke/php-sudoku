@@ -49,8 +49,8 @@ class Solver {
 
 			$grid_row = [[], [], []];
 			for ($n = 0; $n<9; $n++){
-				$block = (int) floor($n/3);
-				$grid_row[$block][] = (int) $row[$n];
+				$block = (int)floor($n / 3);
+				$grid_row[$block][] = (int)$row[$n];
 			}
 			$grid[] = $grid_row;
 		}
@@ -83,23 +83,18 @@ class Solver {
 	 * @throws SudokuException
 	 */
 	private function checkRows(array $grid){
-		foreach ($grid as $row_num => $row){
-			$numbers_appeared = [];
-			$blocks = $row;
+		$rows = [];
+		foreach ($grid as $row_num => $blocks){
+			$row = [];
 			foreach ($blocks as $block){
 				foreach ($block as $num){
-					if ((int) $num===0){
-						continue;
-					}
-					if (in_array($num, $numbers_appeared)){
-						$row_num++;
-						throw new SudokuException("The number $num appeared twice in row $row_num");
-					}
-
-					$numbers_appeared[] = $num;
+					$row[] = $num;
 				}
 			}
+			$rows[] = $row;
 		}
+
+		$this->checkRange($rows, 'row');
 	}
 
 	/**
@@ -119,48 +114,39 @@ class Solver {
 			}
 		}
 
-		foreach ($columns as $col_num => $column){
-			$numbers_appeared = [];
-
-			foreach ($column as $num){
-				if ((int)$num===0){
-					continue;
-				}
-				if (in_array($num, $numbers_appeared)){
-					$col_num++;
-					throw new SudokuException("The number $num appeared twice in column $col_num");
-				}
-
-				$numbers_appeared[] = $num;
-			}
-		}
+		$this->checkRange($columns, 'column');
 	}
 
 	private function checkBlocks(array $grid){
 		$blocks = [[], [], [], [], [], [], [], [], [],];
 		foreach ($grid as $row_num => $row){
 			$row_blocks = $row;
-			$block_base = (int) floor($row_num/3);
-			echo "Base $block_base\n";
+			$block_base = (int)floor($row_num / 3);
 			foreach ($row_blocks as $n => $block){
-				$block_num = $block_base + $n;
-				echo "Num $block_num\n";
+				$block_num = ($block_base * 3)+$n;
 				$blocks[$block_num] = array_merge($blocks[$block_num], $block);
 			}
 		}
 
-		print_r($blocks);
+		$this->checkRange($blocks, 'block');
+	}
 
-		foreach ($columns as $col_num => $column){
+	/**
+	 * @param array $ranges
+	 * @param string $range_name
+	 * @throws SudokuException
+	 */
+	private function checkRange(array $ranges, $range_name){
+		foreach ($ranges as $range_num => $range){
 			$numbers_appeared = [];
 
-			foreach ($column as $num){
+			foreach ($range as $num){
 				if ((int)$num===0){
 					continue;
 				}
 				if (in_array($num, $numbers_appeared)){
-					$col_num++;
-					throw new SudokuException("The number $num appeared twice in column $col_num");
+					$range_num++;
+					throw new SudokuException("The number $num appeared twice in $range_name $range_num");
 				}
 
 				$numbers_appeared[] = $num;
