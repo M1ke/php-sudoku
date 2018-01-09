@@ -8,6 +8,8 @@ class Solver {
 	 * @var array
 	 */
 	private $grid = [];
+	private $iterations = 0;
+	private $time_taken;
 
 	/**
 	 * Solver constructor.
@@ -24,6 +26,13 @@ class Solver {
 	 */
 	public function getGrid(){
 		return $this->grid;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getGridOutput(){
+		return $this->outputGrid($this->grid);
 	}
 
 	/**
@@ -61,21 +70,38 @@ class Solver {
 	/**
 	 * @param array $grid
 	 * @return $this
+	 * @throws SudokuException
 	 */
 	public function setGrid(array $grid){
+		if (!empty($this->grid)){
+			throw new SudokuException("The grid is already set. You may not re-set the grid, but you can create a new Solver object");
+		}
+
 		$this->grid = $grid;
 
 		return $this;
 	}
 
-	public function checkGrid(){
-		$grid = $this->grid;
+	/**
+	 * @param array $grid
+	 * @throws SudokuException
+	 */
+	private function checkGridInternal(array $grid){
+		if (empty($this->grid)){
+			throw new SudokuException("The grid was empty. Set one using setGrid or submit a file to the constructor");
+		}
 
 		$this->checkRows($grid);
 
 		$this->checkColumns($grid);
 
 		$this->checkBlocks($grid);
+	}
+
+	public function checkGrid(){
+		$grid = $this->grid;
+
+		$this->checkGridInternal($grid);
 	}
 
 	/**
@@ -152,5 +178,134 @@ class Solver {
 				$numbers_appeared[] = $num;
 			}
 		}
+	}
+
+	public function solveGrid(){
+		try {
+			$this->checkGrid();
+		}
+		catch (SudokuException $e) {
+			throw new SudokuException("The grid should not start off in an invalid state. The checker reported: {$e->getMessage()}");
+		}
+
+		$grid = $this->grid;
+
+		if ($this->allSquaresFilled($grid)){
+			return;
+		}
+
+		$start_time = microtime(true);
+
+		$solved_grid = $this->backtrack($grid);
+
+		$this->time_taken = microtime(true) - $start_time;
+
+		$this->grid = $solved_grid;
+	}
+
+	private function backtrack(array $grid, $depth = 1){
+		for ($fill_val = 1; $fill_val<=9; $fill_val++){
+			try {
+				$filled_grid = $this->fillFirstAvailableSquare($grid, $fill_val);
+			}
+			catch (SudokuException $e){
+				return $grid;
+			}
+			$this->iterations++;
+
+			try {
+				$this->checkGridInternal($filled_grid);
+			}
+			catch (SudokuException $e) {
+				continue;
+			}
+
+			try {
+				$next_grid = $this->backtrack($filled_grid, ($depth+1));
+			}
+			catch (SudokuException $e) {
+				continue;
+			}
+		}
+
+		if (empty($next_grid)){
+			throw new SudokuException("Range exhausted");
+		}
+
+		return $next_grid;
+	}
+
+	/**
+	 * @param array $grid
+	 * @return bool
+	 */
+	private function allSquaresFilled(array $grid){
+		try {
+			$this->fillFirstAvailableSquare($grid, 1);
+		}
+		catch (SudokuException $e) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getIterations(){
+		return $this->iterations;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getIterationsFormatted(){
+		return number_format($this->iterations, 0);
+	}
+
+	/**
+	 * @param array $grid
+	 * @param int $val
+	 * @return array
+	 * @throws SudokuException
+	 */
+	private function fillFirstAvailableSquare(array $grid, $val){
+		foreach ($grid as $row_key => &$blocks){
+			foreach ($blocks as $block_key => &$block){
+				foreach ($block as $num_key => &$num){
+					if ((int)$num===0){
+						$num = $val;
+
+						return $grid;
+					}
+				}
+			}
+		}
+
+		throw new SudokuException("Grid is full");
+	}
+
+	/**
+	 * @param array $grid
+	 * @return string
+	 */
+	private function outputGrid(array $grid){
+		$output = '';
+		foreach ($grid as $blocks){
+			foreach ($blocks as $block){
+				$output .= implode(' ', $block).' ';
+			}
+			$output .= "\n";
+		}
+
+		return $output;
+	}
+
+	/**
+	 * @return float
+	 */
+	public function getTimeTaken(){
+		return round($this->time_taken, 3);
 	}
 }
