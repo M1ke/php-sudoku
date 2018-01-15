@@ -40,7 +40,7 @@ class Solver {
 	 * @throws SudokuException
 	 */
 	private function loadFile(string $file_path){
-		if (!is_readable($file_path)){
+		if (!is_readable($file_path) || !file_exists($file_path)){
 			throw new InvalidArgumentException("The file path specified ($file_path) was not readable.");
 		}
 
@@ -186,9 +186,10 @@ class Solver {
 	}
 
 	/**
+	 * @param bool $output
 	 * @throws SudokuException
 	 */
-	public function solveGrid(){
+	public function solveGrid($output = false){
 		try {
 			$this->checkGrid();
 		}
@@ -205,7 +206,7 @@ class Solver {
 		$start_time = microtime(true);
 
 		try {
-			$solved_grid = $this->backtrack($grid);
+			$solved_grid = $this->backtrack($grid, 1, $output);
 		}
 		catch (SudokuException $e){
 			throw new SudokuException("A problem occurred when backtracking; this might mean the backtracker is wrong or the grid is not possible to solve. The error reported was: {$e->getMessage()}");
@@ -219,10 +220,13 @@ class Solver {
 	/**
 	 * @param array $grid
 	 * @param int $depth
+	 * @param bool $output
+	 *
 	 * @return array
+	 * @throws EmptyGridException
 	 * @throws RangeExhaustedException
 	 */
-	private function backtrack(array $grid, $depth = 1){
+	private function backtrack(array $grid, $depth = 1, $output = false){
 		for ($fill_val = 1; $fill_val<=9; $fill_val++){
 			try {
 				$filled_grid = $this->fillFirstAvailableSquare($grid, $fill_val);
@@ -232,6 +236,11 @@ class Solver {
 			}
 			$this->iterations++;
 
+			if ($output && ($this->iterations%1000==0)){
+				$out_grid = $this->outputGrid($filled_grid);
+				echo "-----------------\n$out_grid-----------------\n";
+			}
+
 			try {
 				$this->checkGridInternal($filled_grid);
 			}
@@ -240,7 +249,7 @@ class Solver {
 			}
 
 			try {
-				$next_grid = $this->backtrack($filled_grid, ($depth+1));
+				$next_grid = $this->backtrack($filled_grid, ($depth+1), $output);
 			}
 			catch (RangeExhaustedException $e) {
 				continue;
@@ -322,9 +331,15 @@ class Solver {
 	}
 
 	/**
-	 * @return float
+	 * @return string
 	 */
 	public function getTimeTaken(){
-		return round($this->time_taken, 3);
+		$seconds = round($this->time_taken, 3);
+		$minutes = $seconds/60;
+		if ($minutes>=1){
+			return floor($minutes).' minutes and '.($seconds%60).' seconds';
+		}
+
+		return $seconds.' seconds';
 	}
 }
