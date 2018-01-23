@@ -2,11 +2,24 @@
 
 Brute force Sudoku solver using the backtracking method
 
+## How to use
+
+```
+composer install
+php solver.php --file path/to/file
+```
+
+See `tests/_data` for example files. Add `--output` parameter to see each stage of output.
+
 ### Points to improve
 
 Current array format reads well for input but is far less efficient when checking the grid.
 It would be easy to move to a simple ordered list and then define what a row, column and
 block are.
+
+Getting the output displaying without echoing a new grid each time (i.e. print in place) would
+be neat and look cooler, but I wasn't able to find useful resources to do that with a multi-line
+output in PHP CLI.
 
 ### Testing learning points
 
